@@ -183,6 +183,9 @@ O OpenCode usa Bun, que respeita `HTTPS_PROXY` mas **não** faz SOCKS5. O `zen_b
 | `zen_fable.ps1` | Testa modelos via OpenRouter |
 | `zen_api_probe.js` | Sonda o OpenAPI do OpenCode |
 | `zen_db_probe.js` | Lê o banco SQLite do OpenCode |
+| `zen_live.ps1` | Teste real de conteúdo em cada provider |
+| `zen_live2.ps1` | Lista modelos free + teste de conteúdo |
+| `zen_openapi.json` | Spec OpenAPI do servidor local (usada pelo `zen_api_probe.js`) |
 
 ---
 

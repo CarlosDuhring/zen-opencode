@@ -10,7 +10,6 @@ service.json.*
 *.err
 zen_body.json
 zen_br_debug.txt
-zen_openapi.json
 git-portable.zip
 
 # sistema
