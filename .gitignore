@@ -1,0 +1,24 @@
+# segredos e estado local
+service.json
+service.json.*
+*.zen-bak
+*.log
+*.pid
+*.state.json
+*.notice.txt
+*.out
+*.err
+zen_body.json
+zen_br_debug.txt
+zen_openapi.json
+git-portable.zip
+
+# sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# editores
+.vscode/
+.idea/
+*.swp
