@@ -51,33 +51,33 @@ C:\Program Files\nodejs\node.exe
 
 ## Instalação rápida
 
-1. **Copie os scripts** para uma pasta (ex.: `C:\Users\SEU_USUARIO\zen-opencode`).
-2. **Ajuste os caminhos** (se seu usuário não for `SENAI`):
+1. **Clone o repositório** (ou baixe o ZIP):
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\setup.ps1
+   git clone git@github.com:CarlosDuhring/zen-opencode.git
+   cd zen-opencode
    ```
 
-   O `setup.ps1` troca `C:\Users\SENAI` pelo seu `%USERPROFILE%` em todos os arquivos.
-
-3. **Confirme que o WARP está em modo proxy:**
+2. **Confirme que o WARP está em modo proxy:**
 
    ```powershell
    & "C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe" mode proxy
    & "C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe" connect
    ```
 
-4. **Suba a ponte e o vigia:**
+3. **Suba a ponte e o vigia:**
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\scripts\zen_keep.ps1
+   powershell -ExecutionPolicy Bypass -File .\zen_keep.ps1
    ```
 
-5. **Ligue o vigia em background (sem janela):**
+4. **Ligue o vigia em background (sem janela):**
 
    ```powershell
-   wscript .\scripts\zen_auto.vbs
+   wscript .\zen_auto.vbs
    ```
+
+> Os scripts usam caminhos relativos (`$PSScriptRoot`, `__dirname`, `%USERPROFILE%`). Não precisa editar nada. O `setup.ps1` só serve se você copiou os scripts de uma versão antiga com caminhos fixos.
 
 ---
 
@@ -96,12 +96,12 @@ zen             :: status completo (WARP + IPs + ponte + vigia)
 ### `zen_auto.ps1` — ações diretas
 
 ```powershell
-.\scripts\zen_auto.ps1 watch      # roda o vigia em primeiro plano
-.\scripts\zen_auto.ps1 on         # liga o vigia (via wscript, sem janela)
-.\scripts\zen_auto.ps1 off        # desliga o vigia
-.\scripts\zen_auto.ps1 backup     # salva service.json
-.\scripts\zen_auto.ps1 rotate     # gira WARP + ponte agora
-.\scripts\zen_auto.ps1 resume <sessionID>   # força "continue" numa sessão
+.\zen_auto.ps1 watch      # roda o vigia em primeiro plano
+.\zen_auto.ps1 on         # liga o vigia (via wscript, sem janela)
+.\zen_auto.ps1 off        # desliga o vigia
+.\zen_auto.ps1 backup     # salva service.json
+.\zen_auto.ps1 rotate     # gira WARP + ponte agora
+.\zen_auto.ps1 resume <sessionID>   # força "continue" numa sessão
 ```
 
 ### `zen_bridge.js` — ponte
@@ -169,20 +169,20 @@ O OpenCode usa Bun, que respeita `HTTPS_PROXY` mas **não** faz SOCKS5. O `zen_b
 
 | Arquivo | Função |
 |---|---|
-| `scripts/zen_auto.ps1` | Vigia principal + rotação + retomada |
-| `scripts/zen_bridge.js` | Proxy HTTP→SOCKS5 |
-| `scripts/zen_keep.ps1` | Sobe ponte + vigia |
-| `scripts/zen_guard.ps1` | Health check WARP + ponte (logon / 5 min) |
-| `scripts/zen_warp.ps1` | Gira WARP e testa cota (standalone) |
-| `scripts/zen.cmd` | Atalho de comandos |
-| `scripts/zen_auto.vbs` | Inicia o vigia sem janela |
-| `scripts/zen_keep.vbs` | Inicia o keep sem janela |
-| `scripts/zen_session_title.js` | Lê o título da sessão no SQLite |
-| `scripts/zen_probe_providers.ps1` | Testa providers do `opencode.json` |
-| `scripts/zen_keys.ps1` | Testa chaves/providers |
-| `scripts/zen_fable.ps1` | Testa modelos via OpenRouter |
-| `scripts/zen_api_probe.js` | Sonda o OpenAPI do OpenCode |
-| `scripts/zen_db_probe.js` | Lê o banco SQLite do OpenCode |
+| `zen_auto.ps1` | Vigia principal + rotação + retomada |
+| `zen_bridge.js` | Proxy HTTP→SOCKS5 |
+| `zen_keep.ps1` | Sobe ponte + vigia |
+| `zen_guard.ps1` | Health check WARP + ponte (logon / 5 min) |
+| `zen_warp.ps1` | Gira WARP e testa cota (standalone) |
+| `zen.cmd` | Atalho de comandos |
+| `zen_auto.vbs` | Inicia o vigia sem janela |
+| `zen_keep.vbs` | Inicia o keep sem janela |
+| `zen_session_title.js` | Lê o título da sessão no SQLite |
+| `zen_probe_providers.ps1` | Testa providers do `opencode.json` |
+| `zen_keys.ps1` | Testa chaves/providers |
+| `zen_fable.ps1` | Testa modelos via OpenRouter |
+| `zen_api_probe.js` | Sonda o OpenAPI do OpenCode |
+| `zen_db_probe.js` | Lê o banco SQLite do OpenCode |
 
 ---
 
@@ -203,7 +203,7 @@ A senha fica em `%USERPROFILE%\.local\state\opencode\service.json`.
 A ponte caiu. Suba de novo:
 
 ```powershell
-node scripts\zen_bridge.js 8899 127.0.0.1 40000 8898
+node zen_bridge.js 8899 127.0.0.1 40000 8898
 ```
 
 Ou rode `zen_guard.ps1`.

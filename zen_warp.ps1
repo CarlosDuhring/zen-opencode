@@ -2,7 +2,7 @@
 # Nao muda o IP do Windows. Nao toca no service.json. So gira e testa.
 $ErrorActionPreference = 'Continue'
 $w = 'C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe'
-$oc = 'C:\Users\SENAI\AppData\Roaming\npm\node_modules\@opencode\cli\bin\opencode.exe'
+$oc = Join-Path $env:APPDATA 'npm\node_modules\@opencode\cli\bin\opencode.exe'
 $env:HTTP_PROXY = 'http://127.0.0.1:8899'
 $env:HTTPS_PROXY = 'http://127.0.0.1:8899'
 $env:NO_PROXY = 'localhost,127.0.0.1,::1'

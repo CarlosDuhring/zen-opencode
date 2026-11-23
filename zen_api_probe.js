@@ -1,5 +1,5 @@
 const fs = require('fs');
-const spec = JSON.parse(fs.readFileSync('C:/Users/SENAI/zen_openapi.json', 'utf8'));
+const spec = JSON.parse(fs.readFileSync(__dirname + '/zen_openapi.json', 'utf8'));
 for (const p of ['/api/session', '/api/session/{sessionID}/prompt', '/api/session/{sessionID}/synthetic']) {
   const item = spec.paths[p];
   if (!item) continue;

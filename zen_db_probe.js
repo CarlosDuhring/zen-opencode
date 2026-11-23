@@ -1,5 +1,5 @@
 const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('C:/Users/SENAI/.local/share/opencode/opencode.db', { readOnly: true });
+const db = new DatabaseSync(process.env.USERPROFILE.replace(/\\/g, '/') + '/.local/share/opencode/opencode.db', { readOnly: true });
 const rows = db.prepare("select idle_outcome, resume_attempts, count(*) n from session_v2 group by idle_outcome, resume_attempts order by n desc limit 20").all();
 for (const r of rows) console.log(JSON.stringify(r));
 console.log('\n--- sessoes recentes ---');

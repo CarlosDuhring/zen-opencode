@@ -13,7 +13,7 @@
 #   test              testa o caminho inteiro sem gastar cota
 
 $ErrorActionPreference = 'Continue'
-$S       = 'C:\Users\SENAI'
+$S       = $PSScriptRoot
 $WARP    = 'C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe'
 $LOG     = "$env:USERPROFILE\.local\share\opencode\log\opencode.log"
 $DB      = "$env:USERPROFILE\.local\share\opencode\opencode.db"
@@ -139,8 +139,8 @@ function Rotate-Warp {
 
 function Resume-Session($sid) {
     if (-not $sid) { Say "  retomar: sem sessionID na linha do log"; return $false }
-    $oc = 'C:\Users\SENAI\AppData\Roaming\npm\node_modules\@opencode\cli\bin\opencode.exe'
-    if (-not (Test-Path $oc)) { $oc = 'C:\Users\SENAI\AppData\Roaming\npm\opencode.cmd' }
+    $oc = Join-Path $env:APPDATA 'npm\node_modules\@opencode\cli\bin\opencode.exe'
+    if (-not (Test-Path $oc)) { $oc = Join-Path $env:APPDATA 'npm\opencode.cmd' }
     $oldH = $env:HTTP_PROXY; $oldS = $env:HTTPS_PROXY; $oldN = $env:NO_PROXY
     $env:HTTP_PROXY = 'http://127.0.0.1:8899'
     $env:HTTPS_PROXY = 'http://127.0.0.1:8899'
@@ -162,8 +162,8 @@ function Resume-Session($sid) {
 }
 
 function Test-Quota {
-    $oc = 'C:\Users\SENAI\AppData\Roaming\npm\node_modules\@opencode\cli\bin\opencode.exe'
-    if (-not (Test-Path $oc)) { $oc = 'C:\Users\SENAI\AppData\Roaming\npm\opencode.cmd' }
+    $oc = Join-Path $env:APPDATA 'npm\node_modules\@opencode\cli\bin\opencode.exe'
+    if (-not (Test-Path $oc)) { $oc = Join-Path $env:APPDATA 'npm\opencode.cmd' }
     $oldH = $env:HTTP_PROXY; $oldS = $env:HTTPS_PROXY; $oldN = $env:NO_PROXY
     $env:HTTP_PROXY = 'http://127.0.0.1:8899'
     $env:HTTPS_PROXY = 'http://127.0.0.1:8899'
