@@ -128,16 +128,21 @@ def mark_spent(blk: str):
     save_spent(spent)
 
 
-def egress_block() -> str:
-    """Pega o /64 de saida atual do SOCKS do WARP (sem gastar cota)."""
+def egress_ip() -> str:
+    """IP de saida (/128) atual do SOCKS do WARP (sem gastar cota)."""
     try:
         r = subprocess.run(
             ["curl", "-s", "--max-time", "12", "--socks5-hostname", "127.0.0.1:40000",
              "https://api64.ipify.org"],
             capture_output=True, text=True, timeout=15)
-        return block_of((r.stdout or "").strip())
+        return (r.stdout or "").strip()
     except Exception:
         return ""
+
+
+def egress_block() -> str:
+    """Pega o /64 de saida atual do SOCKS do WARP (sem gastar cota)."""
+    return block_of(egress_ip())
 
 def limit_session(buf: str) -> str | None:
     """Extrai o session.id da linha de erro de cota (o que realmente estourou)."""
@@ -296,16 +301,17 @@ def resume(session_id: str | None, env) -> str:
 
 
 def handle_limit(sid_hint: str | None = None) -> bool:
-    """Gira ate achar um egress com cota; so gira de novo em cota real.
-    Erros transitorios (peak demand, socket) tentam o MESMO bloco, sem queima-lo."""
+    """Gira ate achar um egress com cota. Rastreia o IP (/128) E o /64:
+    se o limite for por IP, cada re-registro = cota nova (ilimitado); se for
+    por /64, detecta no 2o limite do mesmo /64 e passa a pular o /64."""
     write_state(handling=True, handling_since=int(time.time()))
     sid = sid_hint or active_session()
     write_state(active_session=sid)
-    # o bloco atual acabou de dar limit: marca como gasto antes de girar
-    cur = egress_block()
-    if cur:
-        mark_spent(cur)
-        log(f"bloco atual {cur} marcado como gasto (deu limit)")
+    cur_ip = egress_ip()
+    if cur_ip:
+        mark_spent("ip:" + cur_ip)
+        log(f"IP atual {cur_ip} marcado (deu limit)")
+    last_quota_64 = ""
     try:
         for attempt in range(1, MAXTRIES + 1):
             proxy = rotate()
@@ -313,10 +319,12 @@ def handle_limit(sid_hint: str | None = None) -> bool:
                 log(f"tentativa {attempt}: rotacao falhou (direct), repetindo")
                 time.sleep(3)
                 continue
-            blk = egress_block()
-            if blk and blk in spent_today():
-                log(f"tentativa {attempt}: bloco {blk} ja gasto hoje, pulando")
-                time.sleep(2)
+            ip = egress_ip()
+            blk = block_of(ip)
+            spent = spent_today()
+            if ip and (("ip:" + ip) in spent or (blk and blk in spent)):
+                log(f"tentativa {attempt}: IP {ip} / bloco {blk} ja gasto, pulando")
+                time.sleep(3)
                 continue
             if not wait_socks(15):
                 log(f"tentativa {attempt}: SOCKS nao estabilizou, repetindo")
@@ -326,33 +334,36 @@ def handle_limit(sid_hint: str | None = None) -> bool:
             status = test_quota(env)
             if status == "transient":
                 for t in range(2, 4):  # so erro transitorio repete no MESMO bloco
-                    log(f"  bloco {blk} tent {t}: transient, aguardando")
+                    log(f"  {ip} tent {t}: transient, aguardando")
                     time.sleep(5)
                     status = test_quota(env)
                     if status in ("ok", "quota"):
                         break
             if status == "ok":
                 drop_tunnels()
-                log(f"cota ok na tentativa {attempt} via {proxy} ({blk or '?'})")
+                log(f"cota ok na tentativa {attempt} via {ip} ({blk or '?'})")
                 write_state(last_ok=int(time.time()), last_proxy=proxy,
                             handling=False, fail_until=0)
                 return True
             if status == "quota":
-                if blk:
+                if ip:
+                    mark_spent("ip:" + ip)
+                # 2 limites no MESMO /64 -> o limite e por /64: marca o /64 e pula
+                if last_quota_64 and blk and blk == last_quota_64:
                     mark_spent(blk)
-                log(f"tentativa {attempt}: sem cota via {proxy} ({blk or '?'})")
+                    log(f"  bloco {blk}: 2 limites -> e por /64, marcando bloco")
+                last_quota_64 = blk
+                log(f"tentativa {attempt}: sem cota em {ip} ({blk or '?'})")
                 time.sleep(3)
                 continue
             # "other" (timeout/model lento) ou transient persistente:
-            # o bloco NAO deu limit -> provavelmente tem cota. Derruba tuneis para
-            # o servico reconectar no egress novo e considera recuperado (a proxima
-            # mensagem do usuario ja passa pelo bloco novo, sem sair/entrar).
+            # o IP NAO deu limit -> provavelmente tem cota. Derruba tuneis para
+            # o servico reconectar no egress novo e considera recuperado.
             drop_tunnels()
-            log(f"tentativa {attempt}: {status} sem limit -> tuneis renovados ({blk or '?'})")
+            log(f"tentativa {attempt}: {status} sem limit -> tuneis renovados ({ip} / {blk or '?'})")
             write_state(last_ok=int(time.time()), last_proxy=proxy,
                         handling=False, fail_until=0)
             return True
-        # esgotou rotacoes: nao entra em espiral, espera 10 min antes de tentar de novo
         NOTICE_FILE.write_text(
             f"{time.strftime('%Y-%m-%d %H:%M:%S')} esgotou {MAXTRIES} tentativas de rotacao\n",
             encoding="utf-8")
