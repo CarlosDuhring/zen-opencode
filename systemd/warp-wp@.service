@@ -1,0 +1,16 @@
+[Unit]
+Description=WARP wireproxy pool instance %i (conta wgcf %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/zen-opencode/warp-accounts/acc%i
+ExecStart=%h/zen-opencode/tools/wireproxy -c %h/zen-opencode/warp-accounts/acc%i/wireproxy.conf
+Restart=always
+RestartSec=3
+StandardOutput=append:%h/zen-opencode/warp-accounts/acc%i/wp.log
+StandardError=append:%h/zen-opencode/warp-accounts/acc%i/wp.log
+
+[Install]
+WantedBy=default.target

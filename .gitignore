@@ -28,3 +28,8 @@ __pycache__/
 *.pyc
 *.bak
 *.bak-*
+
+# pool WARP: binarios, chaves privadas (NUNCA commitar) e portas locais
+tools/
+warp-accounts/
+warp-pool.txt
