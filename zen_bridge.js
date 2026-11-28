@@ -11,30 +11,11 @@
 const net = require('net');
 const http = require('http');
 const dns = require('dns');
-const fs = require('fs');
 
 const IDLE_MS = parseInt(process.env.ZEN4_IDLE_MS || '60000', 10);
 const PORT = parseInt(process.argv[2] || '8899', 10);
 const SOCKS_HOST = process.argv[3] || '127.0.0.1';
 const SOCKS_PORT = parseInt(process.argv[4] || '40000', 10);
-
-// Pool de egress: cada linha "host:porta" de um SOCKS5 (wireproxy das contas wgcf
-// + o warp-cli). O bridge faz round-robin por conexao e troca no retry.
-let POOL = [];
-try {
-  const pf = process.env.ZEN4_POOL || '/home/duhring/zen-opencode/warp-pool.txt';
-  if (fs.existsSync(pf)) {
-    POOL = fs.readFileSync(pf, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-      const i = l.lastIndexOf(':');
-      return { host: l.slice(0, i), port: parseInt(l.slice(i + 1), 10) };
-    }).filter((p) => p.host && p.port);
-  }
-} catch (_) {}
-let poolIdx = 0;
-function pickProxy() {
-  if (POOL.length) { const p = POOL[poolIdx % POOL.length]; poolIdx++; return p; }
-  return { host: SOCKS_HOST, port: SOCKS_PORT };
-}
 
 function log(msg) {
   const t = new Date().toISOString().slice(11, 19);
@@ -92,8 +73,7 @@ function ipv6ToBuffer(addr) {
 
 function socksConnect(destHost, destPort, cb, destV6, retries) {
   if (retries === undefined) retries = 8;
-  const px = pickProxy();
-  const s = net.connect(px.port, px.host);
+  const s = net.connect(SOCKS_PORT, SOCKS_HOST);
   s.on('error', noop); // idem: erro pos-handshake (ECONNRESET) nao derruba o bridge
   let done = false;
   const fail = (e) => {
@@ -202,7 +182,7 @@ const ctl = http.createServer((req, res) => {
   }
   if (u === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ up: true, tunnels: tunnels.size, socks: `${SOCKS_HOST}:${SOCKS_PORT}`, pool: POOL.length }) + '\n');
+    res.end(JSON.stringify({ up: true, tunnels: tunnels.size, socks: `${SOCKS_HOST}:${SOCKS_PORT}` }) + '\n');
     return;
   }
   res.writeHead(404, { 'Content-Type': 'text/plain' });

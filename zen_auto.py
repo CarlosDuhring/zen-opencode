@@ -301,9 +301,9 @@ def resume(session_id: str | None, env) -> str:
 
 
 def handle_limit(sid_hint: str | None = None) -> bool:
-    """Gira ate achar um egress com cota. Rastreia o IP (/128) E o /64:
-    se o limite for por IP, cada re-registro = cota nova (ilimitado); se for
-    por /64, detecta no 2o limite do mesmo /64 e passa a pular o /64."""
+    """Gira ate achar um egress com cota. Limite CONFIRMADO por /128 (2026-11-28):
+    reconectar o WARP sorteia um /128 novo = cota nova -> ilimitado. So rastreia
+    o /128 exato; nunca marca /64 (um /128 novo no mesmo /64 continua valendo)."""
     write_state(handling=True, handling_since=int(time.time()))
     sid = sid_hint or active_session()
     write_state(active_session=sid)
@@ -311,7 +311,6 @@ def handle_limit(sid_hint: str | None = None) -> bool:
     if cur_ip:
         mark_spent("ip:" + cur_ip)
         log(f"IP atual {cur_ip} marcado (deu limit)")
-    last_quota_64 = ""
     try:
         for attempt in range(1, MAXTRIES + 1):
             proxy = rotate()
@@ -322,7 +321,7 @@ def handle_limit(sid_hint: str | None = None) -> bool:
             ip = egress_ip()
             blk = block_of(ip)
             spent = spent_today()
-            if ip and (("ip:" + ip) in spent or (blk and blk in spent)):
+            if ip and ("ip:" + ip) in spent:
                 log(f"tentativa {attempt}: IP {ip} / bloco {blk} ja gasto, pulando")
                 time.sleep(3)
                 continue
@@ -348,11 +347,6 @@ def handle_limit(sid_hint: str | None = None) -> bool:
             if status == "quota":
                 if ip:
                     mark_spent("ip:" + ip)
-                # 2 limites no MESMO /64 -> o limite e por /64: marca o /64 e pula
-                if last_quota_64 and blk and blk == last_quota_64:
-                    mark_spent(blk)
-                    log(f"  bloco {blk}: 2 limites -> e por /64, marcando bloco")
-                last_quota_64 = blk
                 log(f"tentativa {attempt}: sem cota em {ip} ({blk or '?'})")
                 time.sleep(3)
                 continue
