@@ -12,6 +12,7 @@ const net = require('net');
 const http = require('http');
 const dns = require('dns');
 
+const IDLE_MS = parseInt(process.env.ZEN4_IDLE_MS || '60000', 10);
 const PORT = parseInt(process.argv[2] || '8899', 10);
 const SOCKS_HOST = process.argv[3] || '127.0.0.1';
 const SOCKS_PORT = parseInt(process.argv[4] || '40000', 10);
@@ -70,7 +71,8 @@ function ipv6ToBuffer(addr) {
   } catch (_) { return null; }
 }
 
-function socksConnect(destHost, destPort, cb, destV6) {
+function socksConnect(destHost, destPort, cb, destV6, retries) {
+  if (retries === undefined) retries = 8;
   const s = net.connect(SOCKS_PORT, SOCKS_HOST);
   s.on('error', noop); // idem: erro pos-handshake (ECONNRESET) nao derruba o bridge
   let done = false;
@@ -78,8 +80,16 @@ function socksConnect(destHost, destPort, cb, destV6) {
     if (done) return;
     done = true;
     try { s.destroy(); } catch (_) {}
-    log(`  socks falhou (${e.message}), tentando direto`);
-    directConnect(destHost, destPort, cb);
+    // NAO cair em direto: o IP real ja esgotou a cota free -> daria "Free usage
+    // limit". Na rotacao o SOCKS do WARP fica 1-2s fora (ECONNREFUSED); retenta
+    // ate voltar. Se esgotar as tentativas, devolve erro (cliente reenvia).
+    if (retries > 0) {
+      log(`  socks falhou (${e.message}), retentando (${retries})`);
+      setTimeout(() => socksConnect(destHost, destPort, cb, destV6, retries - 1), 400);
+    } else {
+      log(`  socks falhou (${e.message}), desistindo`);
+      cb(e);
+    }
   };
 
   s.once('error', fail);
@@ -217,6 +227,19 @@ server.on('connect', (req, clientSocket, head) => {
     clientSocket.pipe(upstream);
     upstream.on('error', () => { try { clientSocket.destroy(); } catch (_) {} });
     clientSocket.on('error', () => { try { upstream.destroy(); } catch (_) {} });
+
+    // idle: derruba o tunel parado (app reabre e pega o egress novo do WARP)
+    let idle = null;
+    const resetIdle = () => {
+      if (idle) clearTimeout(idle);
+      idle = setTimeout(() => {
+        try { clientSocket.destroy(); } catch (_) {}
+        try { upstream.destroy(); } catch (_) {}
+      }, IDLE_MS);
+    };
+    upstream.on('data', resetIdle);
+    clientSocket.on('data', resetIdle);
+    resetIdle();
     upstream.on('close', () => { try { clientSocket.destroy(); } catch (_) {} });
     clientSocket.on('close', () => { try { upstream.destroy(); } catch (_) {} });
 

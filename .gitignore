@@ -21,3 +21,10 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# artefatos locais (nao commitar)
+warp/
+__pycache__/
+*.pyc
+*.bak
+*.bak-*

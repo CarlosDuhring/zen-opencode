@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# zen - atalho de controle da rotacao WARP do zen-opencode (Linux).
+#   zen            status completo (WARP + egress + bridge + watcher)
+#   zen rotate     gira o WARP agora e testa a cota
+#   zen on         liga o watcher + bridge (systemd --user)
+#   zen off        desliga o watcher + bridge
+#   zen rotate-on  sobe so o bridge
+#   zen resume [id] manda "continue" numa sessao (default: a ativa)
+#   zen logs       ultimas linhas do watcher
+set -u
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ST="$HOME/.local/state/zen-opencode"
+mkdir -p "$ST"
+
+warp_ip() {
+  curl -s --max-time 12 --socks5-hostname 127.0.0.1:40000 \
+    https://api.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^ip=/{print $2}'
+}
+
+case "${1:-status}" in
+  rotate)   exec python3 "$HERE/zen_auto.py" rotate ;;
+  resume)   shift; exec python3 "$HERE/zen_auto.py" resume "$@" ;;
+  on)       systemctl --user enable --now zen-bridge.service zen-auto.service; echo "on" ;;
+  off)      systemctl --user disable --now zen-auto.service zen-bridge.service; echo "off" ;;
+  rotate-on) systemctl --user enable --now zen-bridge.service; echo "bridge on" ;;
+  logs)     tail -n 40 "$ST/zen_auto.log" 2>/dev/null ;;
+  status|"")
+    echo "== WARP =="
+    warp-cli --accept-tos status 2>&1 | sed 's/^/  /'
+    echo "== SOCKS 40000 egress =="
+    echo "  $(warp_ip)"
+    echo "== bridge 8899 =="
+    curl -s --max-time 4 http://127.0.0.1:8898/health 2>/dev/null || echo "  (off)"
+    echo
+    echo "== servicos =="
+    systemctl --user is-active zen-bridge.service zen-auto.service 2>/dev/null | paste -sd' ' -
+    echo "== watcher state =="
+    python3 "$HERE/zen_auto.py" status 2>/dev/null
+    ;;
+  *) echo "uso: zen [status|rotate|resume|on|off|rotate-on|logs]"; exit 2 ;;
+esac
