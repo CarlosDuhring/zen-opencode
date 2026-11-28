@@ -151,13 +151,14 @@ def limit_session(buf: str) -> str | None:
 
 
 def log(msg: str):
+    # Escreve SO no arquivo: o systemd ja anexa o stderr neste mesmo LOG_FILE
+    # (StandardError=append). Escrever nos dois duplicava cada linha.
     line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n"
     try:
         with LOG_FILE.open("a", encoding="utf-8") as f:
             f.write(line)
     except Exception:
         pass
-    sys.stderr.write(line)
 
 
 def read_state() -> dict:
